@@ -184,7 +184,7 @@
       (desc "let1")
       (expect 10 (let1 x 5 (+ x x)))
       (desc "rlet1")
-      (expect '(3 2 1) (rlet1 xs '(1 2 3)
+      (expect '(3 2 1) (rlet1 xs (list 1 2 3)
                          (setq xs (nreverse xs))))
       (desc "cut")
       (expect '(10 20 30)
