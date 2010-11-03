@@ -143,4 +143,75 @@
 (autoload 'util-macro-install "util-macro-install"
   "if you wana using utilmacro in your library, use this. (_ <prefix>)"
   t)
+
+;;;
+;;;; Tests
+;; need el-expectations.el(written by rubikitch) to run.
+;; http://www.emacswiki.org/cgi-bin/wiki/download/el-expectations.el
+(dont-compile
+  (when (fboundp 'expectations)
+    (expectations
+      (desc "aif")
+      (expect 'foo (aif (or nil 'foo) it))
+      (expect 'foo (aif (or nil 'foo) it 'bar))
+      (desc "aand")
+      (expect 123 (aand (+ 1 99) (+ it 20) (+ it 3)))
+      (desc "alambda")
+      (expect 3628800
+        (funcall (alambda (x) (if (= x 0) 1 (* x (self (- x 1)))))
+                 10))
+      (desc "and-let*")
+      (expect 100 (and-let* ((x 10)
+                            ((> x 0))
+                            (x* (* x x)))
+                   x*))
+      (expect nil (and-let* ((x 10)
+                            ((< x 0))
+                            (x* (* x x)))
+                   x*))
+      (expect 'done (let1 foo nil
+                    (and-let* ((x 10)
+                               ((> x 0))
+                               (x* (* x x))
+                               ((progn (setq foo 'done) t)))
+                      foo)))
+      (expect nil (let1 foo nil
+                    (and-let* ((x 10)
+                               ((< x 0))
+                               (x* (* x x))
+                               ((progn (setq foo 'done) t)))
+                      foo)))
+      (desc "let1")
+      (expect 10 (let1 x 5 (+ x x)))
+      (desc "rlet1")
+      (expect '(3 2 1) (rlet1 xs '(1 2 3)
+                         (setq xs (nreverse xs))))
+      (desc "cut")
+      (expect '(10 20 30)
+        (mapcar (cut '* 10 <>) '(1 2 3)))
+      (expect '(11 12 13)
+        (mapcar* (cut '+ <...>) '(1 2 3) (make-list 3 10)))
+      (desc "cute")
+      (expect '(121 122 123)
+        (mapcar (cute '+ (* 10 10) (* 10 2) <>) '(1 2 3)))
+      (expect '(131 142 153)
+        (mapcar* (cute '+ (* 10 10) (* 10 2) <...>) '(1 2 3) '(10 20 30)))
+      (expect '(10 20 30)
+        (let1 x 9
+          (mapcar (cute '* (incf x) <>) '(1 2 3))))
+      (desc "with-gensyms")
+      (expect t
+        (not (memq 'y  (with-gensyms (x y z) (list x y z)))))
+      (desc "with-lexical-bindings")
+      (expect '(1 2 3)
+        (progn
+          (defun %counter (n)
+            (with-lexical-bindings (n)
+              #'(lambda () (incf n))))
+          (let1 c (%counter 0)
+            (list (funcall c)
+                  (funcall c)
+                  (funcall c)))))
+      )))
+;;(expectations-execute)
 (provide 'util-macro)
