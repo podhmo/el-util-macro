@@ -3,7 +3,8 @@
     (dolist (a args) (princ a))))
 
 (defun symb (&rest args)
-  (values (intern (apply #'mkstr args))))
+;  (values 
+   (intern (apply #'mkstr args)))
 
 (defun flatten (x)
   (labels ((rec (x acc)
@@ -31,24 +32,28 @@
 (defun g!-symbol-p (s)
   (if (symbolp s)
       (let ((str (symbol-name s)))
-        (string= (substring-no-properties str 0 2) "G!"))))
+        (condition-case e
+            (string= (substring-no-properties str 0 2) "G!")
+          (error nil)))))
 
 (defun o!-symbol-p (s)
   (if (symbolp s)
       (let ((str (symbol-name s)))
-        (string= (substring-no-properties str 0 2) "O!"))))
+        (condition-case e
+            (string= (substring-no-properties str 0 2) "O!")
+          (error nil)))))
 
 
 (defun o!-symbol-to-g!-symbol (s)
   (symb "G!"
         (subseq (symbol-name s) 2)))
 
-(defmacro defmacro/g! (name args &body body)
+(defmacro defmacro/g! (name args &rest body)
   (let ((symbs (remove-duplicates
                 (remove-if-not #'g!-symbol-p
                                (flatten body)))))
     `(defmacro ,name ,args
-       (let ,(mapcar
+       (let ,(mapcar*
               (lambda (s)
                 `(,s (gensym ,(subseq
                                (symbol-name s)
@@ -56,20 +61,23 @@
               symbs)
          ,@body))))
 
-(defmacro defmacro! (name args &body body)
+(defmacro defmacro! (name args &rest body)
   (let* ((os (remove-if-not #'o!-symbol-p args))
-         (gs (mapcar #'o!-symbol-to-g!-symbol os)))
+         (gs (mapcar* #'o!-symbol-to-g!-symbol os)))
     `(defmacro/g! ,name ,args
-       `(let ,(mapcar #'list (list ,@gs) (list ,@os))
+       `(let ,(mapcar* #'list (list ,@gs) (list ,@os))
           ,(progn ,@body)))))
 
 (dont-compile
-  (when (fboundp 'expectations)
+  (when (or (fboundp 'expectations)
+            (condition-case e 
+                (require 'el-expectations)
+              (file-error nil)))
     (expectations
       (desc "mkstr")
       (expect "abc" (mkstr 'a 'b 'c))
       (desc "symb")
-      (expect '(abc) (symb 'a 'b 'c))
+      (expect 'abc (symb 'a 'b 'c))
       (desc "flatten")
       (expect '(1 2 3 4 5 6) (flatten '((1 (2 (3 (4 . 5)))) . 6)))
       (desc "group")
@@ -83,5 +91,14 @@
       (expect t (o!-symbol-p 'O!foo))
       (expect nil (o!-symbol-p 'o!foo))
       (desc "o!-symbol-to-g!-symbol")
+      (expect 'G!x (o!-symbol-to-g!-symbol 'O!x))
       (desc "defmacro/g!")
-      (desc "defmacro!"))))
+      (desc "defmacro!")
+      (expect 121
+        (progn
+          (defmacro! square (O!x)
+            `(* ,G!x ,G!x))
+          (let1 x 10
+            (square (incf x)))))
+      )))
+   
