@@ -48,7 +48,10 @@
             (t (error "symbol->definition: invalid type -- %s"  (car expr)))))))
 
 (defun util-macro-install (prefix)
-  (dolist (x (mapcar 'cdr util-macro-alist))
-    (insert (symbol->definition x prefix))))
+  (let1 fmt "(put '%s 'lisp-indent-function %d)"
+    (dolist (x (mapcar 'cdr util-macro-alist))
+      (insert (symbol->definition x prefix))
+      (and-let* ((n (get x 'lisp-indent-function)))
+        (insert (format fmt  x (get x 'lisp-indent-function)))))))
 
 (provide 'util-macro-install)
